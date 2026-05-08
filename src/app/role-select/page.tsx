@@ -45,11 +45,6 @@ export default function RoleSelectPage() {
     if (!user) router.replace("/login");
   }, [loading, router, user]);
 
-  useEffect(() => {
-    if (!userRole) return;
-    router.replace(userRole === "driver" ? "/driver" : "/owner");
-  }, [router, userRole]);
-
   async function chooseRole(role: UserRole) {
     if (!user) return;
     try {
@@ -81,8 +76,13 @@ export default function RoleSelectPage() {
             Choose your role
           </h1>
           <p className="mt-2 text-sm text-zinc-600">
-            You can change this later (we’ll add settings in a later phase).
+            You can switch roles anytime from this screen.
           </p>
+          {userRole ? (
+            <div className="mt-3 inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-medium text-zinc-700">
+              Current role: {userRole === "driver" ? "Driver" : "Owner"}
+            </div>
+          ) : null}
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">

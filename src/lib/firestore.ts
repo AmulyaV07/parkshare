@@ -99,7 +99,7 @@ export async function getParkingSpots(filters: ParkingSpotFilters = {}) {
   }
   if (typeof filters.isActive === "boolean") {
     constraints.push(where("isActive", "==", filters.isActive));
-  } else {
+  } else if (!filters.ownerId) {
     constraints.push(where("isActive", "==", true));
   }
   if (typeof filters.isCovered === "boolean") {

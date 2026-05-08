@@ -52,6 +52,13 @@ export function Navbar() {
               <button
                 type="button"
                 className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-3 py-2 text-sm hover:bg-zinc-50"
+                onClick={() => router.push("/role-select")}
+              >
+                Change role
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-3 py-2 text-sm hover:bg-zinc-50"
                 onClick={async () => {
                   await signOut();
                   router.push("/login");
