@@ -1,10 +1,24 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { etaMinutes } from "@/lib/mapbox";
 import type { ParkingSpot } from "@/types";
+
+type AiPrice = {
+  surgeMultiplier: number;
+  finalPrice: number;
+  reasoning: string;
+  demandLevel: "low" | "medium" | "high" | "very_high";
+};
+
+function demandBadgeClasses(level: AiPrice["demandLevel"]) {
+  if (level === "very_high") return "bg-fuchsia-600 text-white";
+  if (level === "high") return "bg-red-600 text-white";
+  if (level === "medium") return "bg-amber-500 text-white";
+  return "bg-emerald-600 text-white";
+}
 
 export function SpotCard({
   spot,
@@ -19,6 +33,9 @@ export function SpotCard({
 }) {
   const [duration, setDuration] = useState<number>(1);
   const [imgIdx, setImgIdx] = useState(0);
+  const [ai, setAi] = useState<AiPrice | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const images = spot?.images ?? [];
   const hasImages = images.length > 0;
@@ -27,6 +44,61 @@ export function SpotCard({
     if (!spot) return null;
     if (typeof spot.distanceKm !== "number") return null;
     return etaMinutes(spot.distanceKm);
+  }, [spot]);
+
+  useEffect(() => {
+    if (!spot) return;
+
+    const ctrl = new AbortController();
+    const load = async () => {
+      try {
+        setAiLoading(true);
+        setAiError(null);
+        setAi(null);
+
+        const now = new Date();
+        const timeOfDay = now.toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+        const dayOfWeek = now.toLocaleDateString("en-IN", { weekday: "long" });
+
+        // Lightweight defaults for Phase 6; can be replaced with real occupancy later.
+        const occupancyNearby = 0.6;
+        const hasUpcomingBooking = false;
+
+        const res = await fetch("/api/ai/pricing", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            spotId: spot.spotId,
+            baseRate: spot.baseHourlyRate,
+            lat: spot.latitude,
+            lng: spot.longitude,
+            timeOfDay,
+            dayOfWeek,
+            occupancyNearby,
+            hasUpcomingBooking,
+          }),
+          signal: ctrl.signal,
+        });
+
+        const json = (await res.json()) as AiPrice | { error?: string };
+        if (!res.ok) {
+          throw new Error("error" in json && json.error ? json.error : "Pricing failed");
+        }
+        setAi(json as AiPrice);
+      } catch (e) {
+        if (ctrl.signal.aborted) return;
+        setAiError(e instanceof Error ? e.message : "Failed to load AI price");
+      } finally {
+        if (!ctrl.signal.aborted) setAiLoading(false);
+      }
+    };
+
+    load();
+    return () => ctrl.abort();
   }, [spot]);
 
   if (!spot) return null;
@@ -96,6 +168,27 @@ export function SpotCard({
                 <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-800">
                   ₹{spot.baseHourlyRate}/hr
                 </span>
+                {aiLoading ? (
+                  <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
+                    AI Price: loading…
+                  </span>
+                ) : ai ? (
+                  <span className="flex items-center gap-2 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-800">
+                    AI Price: ₹{ai.finalPrice}/hr
+                    <span
+                      className={[
+                        "rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                        demandBadgeClasses(ai.demandLevel),
+                      ].join(" ")}
+                    >
+                      {ai.demandLevel.replace("_", " ")}
+                    </span>
+                  </span>
+                ) : aiError ? (
+                  <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
+                    AI Price unavailable
+                  </span>
+                ) : null}
                 <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
                   ₹{spot.baseDailyRate}/day
                 </span>
@@ -106,6 +199,10 @@ export function SpotCard({
                   </span>
                 ) : null}
               </div>
+
+              {ai && !aiLoading ? (
+                <div className="text-xs italic text-zinc-600">{ai.reasoning}</div>
+              ) : null}
 
               <div className="flex flex-wrap gap-2 text-xs text-zinc-700">
                 {spot.isCovered ? (
