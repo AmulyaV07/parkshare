@@ -13,6 +13,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { createNotification } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -125,6 +126,13 @@ export async function POST(req: Request) {
     );
 
     await updateDoc(spotRef, { totalBookings: increment(1) });
+
+    await createNotification(
+      body.driverId,
+      "booking_confirmed",
+      `Your booking at ${spot.title ?? "this spot"} is confirmed for ${start.toLocaleTimeString()} - ${end.toLocaleTimeString()}.`,
+      { bookingId, spotId: body.spotId },
+    );
 
     return NextResponse.json({
       bookingId,

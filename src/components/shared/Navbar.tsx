@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
+import { NotificationCenter } from "@/components/shared/NotificationCenter";
 
 export function Navbar() {
   const router = useRouter();
@@ -39,6 +40,7 @@ export function Navbar() {
 
           {mounted && user ? (
             <div className="flex items-center gap-2">
+              <NotificationCenter uid={user.uid} />
               {user.photoURL ? (
                 <Image
                   src={user.photoURL}

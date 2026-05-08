@@ -58,7 +58,7 @@ export default function RoleSelectPage() {
       );
       setUserRole(role);
       router.replace(role === "driver" ? "/driver" : "/owner");
-    } catch (e) {
+    } catch {
       toast.error("Could not save role. Please try again.");
     } finally {
       setBusyRole(null);

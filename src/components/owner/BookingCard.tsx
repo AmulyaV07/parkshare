@@ -4,6 +4,7 @@ import { arrayUnion, doc, updateDoc } from "firebase/firestore";
 import toast from "react-hot-toast";
 import { db } from "@/lib/firebase";
 import type { Booking } from "@/types";
+import { DamageReview } from "@/components/owner/DamageReview";
 
 export function BookingCard({
   booking,
@@ -78,6 +79,11 @@ export function BookingCard({
           Block Driver
         </button>
       </div>
+      {booking.damageReport ? (
+        <div className="mt-4">
+          <DamageReview booking={booking} />
+        </div>
+      ) : null}
     </div>
   );
 }

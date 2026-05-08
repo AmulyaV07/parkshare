@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { createNotification } from "@/lib/notifications";
 import type { Booking } from "@/types";
 
 export function OverstayAlert({ booking }: { booking: (Booking & { bookingId: string }) | null }) {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const bookingId = booking?.bookingId ?? null;
+  const overstayNotifiedRef = useRef<string | null>(null);
+  const towEscalatedRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!bookingId) return;
@@ -21,6 +26,45 @@ export function OverstayAlert({ booking }: { booking: (Booking & { bookingId: st
     if (!isOverstaying) return 0;
     return Math.max(0, 5 * 60 - Math.floor((nowMs - endMs) / 1000));
   }, [endMs, isOverstaying, nowMs]);
+
+  useEffect(() => {
+    if (!booking || !isOverstaying) return;
+    if (overstayNotifiedRef.current === booking.bookingId) return;
+    const t = setTimeout(() => {
+      void createNotification(
+        booking.driverId,
+        "overstay_detected",
+        "⚠️ You are overstaying! Penalty accruing.",
+        { bookingId: booking.bookingId },
+      );
+      toast.error("⚠️ You are overstaying! Penalty accruing.");
+      overstayNotifiedRef.current = booking.bookingId;
+    }, 0);
+    return () => clearTimeout(t);
+  }, [booking, isOverstaying]);
+
+  useEffect(() => {
+    if (!booking || !isOverstaying || graceSeconds !== 0) return;
+    if (towEscalatedRef.current === booking.bookingId) return;
+    const t = setTimeout(() => {
+      void createNotification(
+        booking.driverId,
+        "tow_escalation",
+        `🚨 Tow alert: Vehicle at ${booking.spotTitle} flagged for removal after grace period.`,
+        { bookingId: booking.bookingId },
+      );
+      void createNotification(
+        booking.ownerId,
+        "tow_escalation",
+        `🚨 Tow alert: Vehicle at ${booking.spotTitle} flagged for removal after grace period.`,
+        { bookingId: booking.bookingId },
+      );
+      void updateDoc(doc(db, "bookings", booking.bookingId), { towEscalatedAt: Date.now() });
+      toast.error("🚨 Tow escalation triggered.");
+      towEscalatedRef.current = booking.bookingId;
+    }, 0);
+    return () => clearTimeout(t);
+  }, [booking, graceSeconds, isOverstaying]);
 
   if (!isOverstaying) return null;
 

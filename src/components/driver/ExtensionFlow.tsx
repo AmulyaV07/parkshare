@@ -14,6 +14,7 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { createNotification } from "@/lib/notifications";
 import type { Booking, ConflictStatus } from "@/types";
 
 type ConflictAi = {
@@ -144,6 +145,12 @@ export function ExtensionFlow({
                     },
                   ],
                 });
+                await createNotification(
+                  booking.driverId,
+                  "conflict_resolved",
+                  `Extension approved for ${hours} hour(s). ₹${extra} charged.`,
+                  { bookingId: booking.bookingId },
+                );
                 toast.success(`Extension approved! ₹${extra} charged.`);
                 onClose();
                 return;
@@ -189,6 +196,12 @@ export function ExtensionFlow({
                 createdAt: Timestamp.now(),
                 resolvedAt: null,
               });
+              await createNotification(
+                conflict.driverId,
+                "extension_conflict_request",
+                `A driver wants to extend. You'll be offered ₹${(aiJson as ConflictAi).compensationAmount} compensation + alternate spot.`,
+                { currentBookingId: booking.bookingId, nextBookingId: conflict.bookingId },
+              );
 
               await new Promise((resolve) => setTimeout(resolve, 5000));
               const accepted = Math.random() < 0.7;
@@ -198,10 +211,28 @@ export function ExtensionFlow({
                   durationHours: booking.durationHours + hours,
                   status: "active",
                 });
+                await createNotification(
+                  booking.driverId,
+                  "conflict_resolved",
+                  "Conflict resolved: extension accepted.",
+                  { bookingId: booking.bookingId },
+                );
+                await createNotification(
+                  conflict.driverId,
+                  "conflict_resolved",
+                  "Conflict resolved: your upcoming slot was moved with compensation (mock).",
+                  { bookingId: conflict.bookingId },
+                );
                 toast.success("Extension accepted. Compensation credited (mock).");
                 onClose();
               } else {
                 setMessage("Extension denied - please vacate on time.");
+                await createNotification(
+                  booking.driverId,
+                  "conflict_resolved",
+                  "Conflict resolved: extension denied. Please vacate on time.",
+                  { bookingId: booking.bookingId },
+                );
                 toast.error("Next driver rejected extension request.");
               }
             } catch (e) {

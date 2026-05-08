@@ -41,7 +41,7 @@ export default function LoginPage() {
                 setBusy(true);
                 await signInWithGoogle();
                 router.replace("/role-select");
-              } catch (e) {
+              } catch {
                 toast.error("Sign-in failed. Please try again.");
               } finally {
                 setBusy(false);

@@ -5,6 +5,8 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAppStore } from "@/store/useAppStore";
 import type { Booking } from "@/types";
+import { DamageClaim } from "@/components/driver/DamageClaim";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 function statusChip(status: Booking["status"]) {
   if (status === "completed") return "bg-emerald-600 text-white";
@@ -18,6 +20,7 @@ export function BookingHistory() {
   const user = useAppStore((s) => s.user);
   const [rows, setRows] = useState<(Booking & { bookingId: string })[]>([]);
   const [loading, setLoading] = useState(false);
+  const [claimBookingId, setClaimBookingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -50,8 +53,25 @@ export function BookingHistory() {
         {loading ? <div className="text-xs text-zinc-500">Loading…</div> : null}
       </div>
 
-      {rows.length === 0 ? (
-        <div className="mt-3 text-sm text-zinc-600">No bookings yet.</div>
+      {loading ? (
+        <div className="mt-4 space-y-2">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="mt-4 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 p-5 text-center">
+          <svg
+            viewBox="0 0 120 80"
+            className="mx-auto h-16 w-24 text-zinc-400"
+            fill="none"
+            aria-hidden
+          >
+            <rect x="10" y="10" width="100" height="60" rx="10" stroke="currentColor" />
+            <path d="M25 30h70M25 45h45" stroke="currentColor" />
+          </svg>
+          <div className="mt-2 text-sm font-semibold text-zinc-900">No bookings yet</div>
+          <div className="text-xs text-zinc-600">Book a spot from the map to get started.</div>
+        </div>
       ) : (
         <div className="mt-4 grid gap-3">
           {rows.map((b) => (
@@ -84,10 +104,44 @@ export function BookingHistory() {
                   {b.paymentStatus}
                 </span>
               </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {b.entryVideoURL ? (
+                  <a
+                    className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+                    href={b.entryVideoURL}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Entry video
+                  </a>
+                ) : null}
+                {b.exitVideoURL ? (
+                  <a
+                    className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+                    href={b.exitVideoURL}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Exit video
+                  </a>
+                ) : null}
+                <button
+                  type="button"
+                  className="rounded-xl bg-zinc-900 px-3 py-2 text-xs font-semibold text-white"
+                  onClick={() => setClaimBookingId(b.bookingId)}
+                >
+                  Raise damage claim
+                </button>
+              </div>
             </div>
           ))}
         </div>
       )}
+      <DamageClaim
+        booking={rows.find((r) => r.bookingId === claimBookingId) ?? null}
+        open={!!claimBookingId}
+        onClose={() => setClaimBookingId(null)}
+      />
     </div>
   );
 }

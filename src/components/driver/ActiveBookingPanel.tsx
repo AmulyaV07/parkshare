@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -8,6 +8,8 @@ import { useAppStore } from "@/store/useAppStore";
 import type { Booking } from "@/types";
 import { ExtensionFlow } from "@/components/driver/ExtensionFlow";
 import { OverstayAlert } from "@/components/driver/OverstayAlert";
+import { VideoCapture } from "@/components/driver/VideoCapture";
+import { createNotification } from "@/lib/notifications";
 
 function statusBadge(endMs: number, nowMs: number, status: Booking["status"]) {
   if (status === "overstaying") return { label: "Overstaying", cls: "bg-red-600 text-white" };
@@ -22,12 +24,22 @@ export function ActiveBookingPanel() {
   const booking = useAppStore((s) => s.activeBookingDoc);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [extensionOpen, setExtensionOpen] = useState(false);
+  const [entryOpen, setEntryOpen] = useState(false);
+  const [exitOpen, setExitOpen] = useState(false);
+  const soonNotifiedForBookingRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!activeBooking?.bookingId) return;
     const t = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(t);
   }, [activeBooking?.bookingId]);
+
+  useEffect(() => {
+    if (!booking?.bookingId) return;
+    if (booking.entryVideoURL) return;
+    const t = setTimeout(() => setEntryOpen(true), 0);
+    return () => clearTimeout(t);
+  }, [booking?.bookingId, booking?.entryVideoURL]);
 
   const endMs = useMemo(() => booking?.endTime?.toMillis?.() ?? null, [booking]);
   const remaining = useMemo(() => {
@@ -41,6 +53,25 @@ export function ActiveBookingPanel() {
       .toString()
       .padStart(2, "0")}`;
   }, [endMs, nowMs]);
+
+  useEffect(() => {
+    if (!booking) return;
+    const startMs = booking.startTime?.toMillis?.() ?? 0;
+    const minsToStart = (startMs - nowMs) / (1000 * 60);
+    const alreadyNotified = soonNotifiedForBookingRef.current === booking.bookingId;
+    if (!(minsToStart > 0 && minsToStart <= 15) || alreadyNotified) return;
+    const t = setTimeout(() => {
+      void createNotification(
+        booking.driverId,
+        "booking_starting_soon",
+        "Your parking starts in 15 minutes. Head there now!",
+        { bookingId: booking.bookingId },
+      );
+      toast("Your parking starts in 15 minutes. Head there now!");
+      soonNotifiedForBookingRef.current = booking.bookingId;
+    }, 0);
+    return () => clearTimeout(t);
+  }, [booking, nowMs]);
 
   if (!booking || !endMs || !activeBooking?.bookingId) return null;
   if (booking.bookingId !== activeBooking.bookingId) return null;
@@ -99,12 +130,7 @@ export function ActiveBookingPanel() {
               className="rounded-xl bg-zinc-900 px-3 py-2 text-sm font-semibold text-white"
               onClick={async () => {
                 try {
-                  await updateDoc(doc(db, "bookings", booking.bookingId), {
-                    status: "completed",
-                  });
-                  clearActiveBooking(null);
-                  toast.success("Booking ended");
-                  toast("Exit video prompt comes in Phase 9");
+                  setExitOpen(true);
                 } catch (e) {
                   toast.error(e instanceof Error ? e.message : "Failed to end booking");
                 }
@@ -119,6 +145,25 @@ export function ActiveBookingPanel() {
         booking={booking}
         open={extensionOpen}
         onClose={() => setExtensionOpen(false)}
+      />
+      <VideoCapture
+        open={entryOpen}
+        bookingId={booking.bookingId}
+        mode="entry"
+        message="Please record a 360° video of your car and surroundings before parking."
+        onClose={() => setEntryOpen(false)}
+      />
+      <VideoCapture
+        open={exitOpen}
+        bookingId={booking.bookingId}
+        mode="exit"
+        message="Please record a 360° video of your car before leaving."
+        onClose={() => setExitOpen(false)}
+        onUploaded={async () => {
+          await updateDoc(doc(db, "bookings", booking.bookingId), { status: "completed" });
+          clearActiveBooking(null);
+          toast.success("Booking ended");
+        }}
       />
       {shouldOverstay ? (
         <OverstayStatusUpdater bookingId={booking.bookingId} />

@@ -9,6 +9,7 @@ import { db } from "@/lib/firebase";
 import type { Booking, ParkingSpot } from "@/types";
 import { SpotCard } from "@/components/map/SpotCard";
 import { SearchBar, type SpotFilters } from "@/components/driver/SearchBar";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type SpotWithMeta = ParkingSpot & {
   spotId: string;
@@ -38,6 +39,7 @@ export function ParkingMap() {
   });
   const [filters, setFilters] = useState<SpotFilters>({});
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [loadingSpots, setLoadingSpots] = useState(true);
 
   useEffect(() => {
     const t = setInterval(() => setNowMs(Date.now()), 30_000);
@@ -62,6 +64,7 @@ export function ParkingMap() {
   useEffect(() => {
     const q = query(collection(db, "parkingSpots"), where("isActive", "==", true));
     const unsub = onSnapshot(q, (snap) => {
+      setLoadingSpots(false);
       setSpots(
         snap.docs.map((d) => ({ ...(d.data() as ParkingSpot), spotId: d.id })),
       );
@@ -174,6 +177,36 @@ export function ParkingMap() {
           </Marker>
         ))}
       </Map>
+      {loadingSpots ? (
+        <div className="pointer-events-none absolute inset-0 z-[5] p-4">
+          <div className="mx-auto max-w-2xl space-y-2">
+            <Skeleton className="h-10 w-full" />
+            <div className="grid grid-cols-2 gap-2">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {!loadingSpots && filteredSpots.length === 0 ? (
+        <div className="pointer-events-none absolute inset-x-0 top-20 z-[6] mx-auto w-[calc(100%-24px)] max-w-md rounded-2xl border border-zinc-200 bg-white/95 p-4 text-center shadow">
+          <svg
+            viewBox="0 0 120 80"
+            className="mx-auto h-16 w-24 text-zinc-400"
+            fill="none"
+            aria-hidden
+          >
+            <rect x="6" y="20" width="108" height="50" rx="10" stroke="currentColor" />
+            <path d="M25 48h70M35 60h50" stroke="currentColor" />
+            <circle cx="40" cy="35" r="6" stroke="currentColor" />
+            <circle cx="80" cy="35" r="6" stroke="currentColor" />
+          </svg>
+          <div className="mt-2 text-sm font-semibold text-zinc-900">No spots found</div>
+          <div className="text-xs text-zinc-600">
+            Try adjusting filters or search another area.
+          </div>
+        </div>
+      ) : null}
 
       <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 p-3">
         <div className="pointer-events-auto mx-auto w-full max-w-2xl">

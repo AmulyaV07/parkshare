@@ -178,7 +178,7 @@ export default function ListSpotPage() {
 
       toast.success("Spot listed!");
       router.replace("/owner");
-    } catch (e) {
+    } catch {
       toast.error("Could not list spot. Please try again.");
     } finally {
       setSubmitting(false);
