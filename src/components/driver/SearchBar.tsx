@@ -36,8 +36,8 @@ export function SearchBar({
 
   useEffect(() => {
     if (!canSearch) {
-      setResults([]);
-      return;
+      const t0 = setTimeout(() => setResults([]), 0);
+      return () => clearTimeout(t0);
     }
 
     const ctrl = new AbortController();

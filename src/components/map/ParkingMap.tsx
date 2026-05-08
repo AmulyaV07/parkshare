@@ -37,6 +37,12 @@ export function ParkingMap() {
     lng: 77.5946, // Bengaluru default
   });
   const [filters, setFilters] = useState<SpotFilters>({});
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -90,7 +96,7 @@ export function ParkingMap() {
       if (active) {
         markerColor = "red";
         const endMs = active.endTime?.toMillis?.() ?? 0;
-        const minsLeft = endMs ? (endMs - Date.now()) / (1000 * 60) : 999;
+        const minsLeft = endMs ? (endMs - nowMs) / (1000 * 60) : 999;
         if (minsLeft <= 30) markerColor = "yellow";
       }
 
@@ -98,7 +104,7 @@ export function ParkingMap() {
         userLoc ? distanceKm(userLoc.lat, userLoc.lng, s.latitude, s.longitude) : undefined;
       return { ...s, distanceKm: dist, markerColor };
     });
-  }, [activeBookingsBySpot, spots, userLoc]);
+  }, [activeBookingsBySpot, nowMs, spots, userLoc]);
 
   const filteredSpots: SpotWithMeta[] = useMemo(() => {
     return spotsWithMeta.filter((s) => {

@@ -158,17 +158,18 @@ export async function getBooking(bookingId: string) {
 }
 
 export async function getActiveBookingForDriver(driverId: string) {
-  const q = query(
-    collection(db, "bookings"),
-    where("driverId", "==", driverId),
-    where("status", "in", ["upcoming", "active", "overstaying"]),
-    orderBy("startTime", "desc"),
-    limit(1),
-  );
+  // Avoid composite index requirement by fetching a small set and filtering client-side.
+  const q = query(collection(db, "bookings"), where("driverId", "==", driverId), limit(25));
   const snaps = await getDocs(q);
-  if (snaps.empty) return null;
-  const d = snaps.docs[0];
-  return { ...(d.data() as Booking), bookingId: d.id };
+  const candidates = snaps.docs
+    .map((d) => ({ ...(d.data() as Booking), bookingId: d.id }))
+    .filter((b) => ["upcoming", "active", "overstaying"].includes(b.status))
+    .sort((a, b) => {
+      const at = a.startTime?.toMillis?.() ?? 0;
+      const bt = b.startTime?.toMillis?.() ?? 0;
+      return bt - at;
+    });
+  return candidates[0] ?? null;
 }
 
 export async function getBookingsForSpot(spotId: string) {

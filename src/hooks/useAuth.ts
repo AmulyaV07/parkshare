@@ -4,7 +4,11 @@ import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { auth, db, googleProvider } from "@/lib/firebase";
-import { useAppStore, type UserRole } from "@/store/useAppStore";
+import {
+  initDriverBookingListener,
+  useAppStore,
+  type UserRole,
+} from "@/store/useAppStore";
 
 function setCookie(name: string, value: string, maxAgeSeconds: number) {
   document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(
@@ -64,6 +68,14 @@ export function useAuth() {
 
     return () => unsub();
   }, [setUser, setUserRole]);
+
+  useEffect(() => {
+    if (!user || userRole !== "driver") {
+      void initDriverBookingListener(null);
+      return;
+    }
+    void initDriverBookingListener(user.uid);
+  }, [user, userRole]);
 
   const signInWithGoogle = useCallback(async () => {
     const result = await signInWithPopup(auth, googleProvider);

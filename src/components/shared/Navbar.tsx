@@ -4,10 +4,17 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffect, useState } from "react";
 
 export function Navbar() {
   const router = useRouter();
   const { user, userRole, signOut } = useAuth();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
     <div className="w-full border-b border-zinc-200 bg-white">
@@ -30,7 +37,7 @@ export function Navbar() {
             </span>
           ) : null}
 
-          {user ? (
+          {mounted && user ? (
             <div className="flex items-center gap-2">
               {user.photoURL ? (
                 <Image

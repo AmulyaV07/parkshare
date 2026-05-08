@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { etaMinutes } from "@/lib/mapbox";
 import type { ParkingSpot } from "@/types";
+import { BookingConfirmation } from "@/components/driver/BookingConfirmation";
 
 type AiPrice = {
   surgeMultiplier: number;
@@ -36,6 +37,7 @@ export function SpotCard({
   const [ai, setAi] = useState<AiPrice | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const images = spot?.images ?? [];
   const hasImages = images.length > 0;
@@ -253,7 +255,12 @@ export function SpotCard({
               <button
                 type="button"
                 className="w-full rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white"
-                onClick={() => toast("Booking flow comes in Phase 7")}
+                onClick={() => {
+                  if (!ai && !aiLoading) {
+                    toast("AI price not ready yet — booking will use base price.");
+                  }
+                  setConfirmOpen(true);
+                }}
               >
                 Book now
               </button>
@@ -267,6 +274,15 @@ export function SpotCard({
           </div>
         </div>
       </div>
+
+      <BookingConfirmation
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        spot={spot}
+        durationHours={duration}
+        aiFinalPricePerHour={ai?.finalPrice ?? null}
+        aiSurgeMultiplier={ai?.surgeMultiplier ?? 1}
+      />
     </div>
   );
 }

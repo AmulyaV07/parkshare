@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { callGemini } from "@/lib/gemini";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 type DemandLevel = "low" | "medium" | "high" | "very_high";
 
 function extractJsonObject(text: string): unknown {

@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { onSnapshot, collection, query, where } from "firebase/firestore";
+import { onSnapshot, collection, query, where, limit } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
 import { Navbar } from "@/components/shared/Navbar";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
-import type { Booking } from "@/types";
+import type { Booking, BookingStatus } from "@/types";
 import { BookingCard } from "@/components/owner/BookingCard";
 
 type TabKey = "active" | "upcoming" | "history";
@@ -46,24 +46,26 @@ export default function OwnerDashboardClient() {
   useEffect(() => {
     if (!user) return;
 
-    const statuses =
+    const statuses: BookingStatus[] =
       tab === "active"
-        ? (["active", "overstaying"] as const)
+        ? ["active", "overstaying"]
         : tab === "upcoming"
-          ? (["upcoming"] as const)
-          : (["completed", "cancelled"] as const);
+          ? ["upcoming"]
+          : ["completed", "cancelled"];
 
     const q = query(
       collection(db, "bookings"),
       where("ownerId", "==", user.uid),
-      where("status", "in", [...statuses]),
+      limit(200),
     );
 
     const unsub = onSnapshot(q, (snap) => {
-      const next = snap.docs.map((d) => ({
-        ...(d.data() as Booking),
-        bookingId: d.id,
-      }));
+      const next = snap.docs
+        .map((d) => ({
+          ...(d.data() as Booking),
+          bookingId: d.id,
+        }))
+        .filter((b) => statuses.includes(b.status));
       next.sort((a, b) => {
         const aStart = a.startTime?.toMillis?.() ?? 0;
         const bStart = b.startTime?.toMillis?.() ?? 0;
