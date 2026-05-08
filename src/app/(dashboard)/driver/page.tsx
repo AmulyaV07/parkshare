@@ -1,34 +1,17 @@
-import Link from "next/link";
+import { Navbar } from "@/components/shared/Navbar";
 
 export default function DriverDashboardPage() {
   return (
-    <div className="flex flex-1 items-center justify-center px-6 py-16">
-      <div className="w-full max-w-xl rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <div className="space-y-1">
-          <div className="text-sm font-semibold tracking-wide text-zinc-500">
-            ParkShare
-          </div>
+    <div className="flex min-h-full flex-1 flex-col bg-zinc-50">
+      <Navbar />
+      <div className="mx-auto flex w-full max-w-5xl flex-1 items-center justify-center px-4 py-12">
+        <div className="w-full rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-950">
-            Driver dashboard (Phase 2+)
+            Driver dashboard
           </h1>
-          <p className="text-sm text-zinc-600">
-            This is a placeholder page so builds succeed during Phase 1.
+          <p className="mt-2 text-sm text-zinc-600">
+            You’re signed in. Map + booking UI comes in Phase 5+.
           </p>
-        </div>
-
-        <div className="mt-6 flex flex-wrap gap-3 text-sm">
-          <Link
-            className="rounded-xl border border-zinc-200 px-4 py-2 hover:bg-zinc-50"
-            href="/login"
-          >
-            Go to Login
-          </Link>
-          <Link
-            className="rounded-xl border border-zinc-200 px-4 py-2 hover:bg-zinc-50"
-            href="/"
-          >
-            Home
-          </Link>
         </div>
       </div>
     </div>
